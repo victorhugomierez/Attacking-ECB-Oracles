@@ -92,3 +92,47 @@ AES‑CBC with HMAC: adds authentication to prevent tampering.
 
 - Key takeaway: AES is strong, but its security depends on how it’s implemented. Using it in insecure modes or without proper authentication can expose systems to attacks.
 
+## Cipher Blocks
+### AES and Padding
+AES is a block cipher, meaning it encrypts data in fixed-size blocks (128 bits). Messages rarely fit perfectly into these blocks, so padding is added to fill the last block before encryption.
+
+- Example of Padding
+Using a custom Python function:
+```python
+DEFAULT_PADDING_SYMBOL = "*"
+
+def custom_pad(message):
+    while len(message) % DEFAULT_BLOCK_SIZE != 0:
+        message += DEFAULT_PADDING_SYMBOL
+    return message
+
+def custom_unpad(message):
+    count = 0
+    for x in range(1, len(message)):
+        if message[len(message) - x] == DEFAULT_PADDING_SYMBOL:
+            count += 1
+        else:
+            break
+    message = message[0:len(message)-count]
+    return message
+```
+- Plaintext: "HELLO"
+
+- Block size: 8
+
+- Padded message: "HELLO***"
+
+This ensures the message fits the required block size.
+
+### Why Padding Matters
+Padding is necessary for block ciphers like AES.
+
+If implemented incorrectly, it can lead to security vulnerabilities.
+
+Attackers may exploit padding errors to reveal information about the plaintext.
+
+### Upcoming Topic: Padding Oracles
+We will explore Padding Oracle attacks in detail in another section. These attacks exploit insecure padding implementations to decrypt ciphertexts without knowing the key.
+[Padding-Oracles Repository](https://github.com/victorhugomierez/Padding-Oracles)
+
+- Key takeaway: AES requires fixed-size blocks, so padding is essential. While padding solves alignment issues, insecure implementations can open the door to attacks such as padding oracles.
