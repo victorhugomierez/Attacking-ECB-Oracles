@@ -136,3 +136,168 @@ We will explore Padding Oracle attacks in detail in another section. These attac
 [Padding-Oracles Repository](https://github.com/victorhugomierez/Padding-Oracles)
 
 - Key takeaway: AES requires fixed-size blocks, so padding is essential. While padding solves alignment issues, insecure implementations can open the door to attacks such as padding oracles.
+
+Example
+- Plaintext message: "HELLO" (5 bytes)
+
+- AES block size: 16 bytes
+
+- Padded message: "HELLO***********" (adds 11 padding symbols to reach 16 bytes)
+
+This ensures the message aligns with AES’s block requirements.
+
+## Cipher Modes
+When encrypting with AES, data is split into fixed-size blocks (16 bytes). The question then becomes: how should these blocks be chained together to form the final ciphertext? The method of chaining is called the cipher block mode.
+
+### Electronic Codebook (ECB)
+
+- ECB is one of the simplest cipher modes:
+
+Each block is encrypted independently.
+
+Identical plaintext blocks produce identical ciphertext blocks.
+
+This leaks patterns and makes ECB insecure for most real-world use cases.
+
+- Example: ECB in Action
+- Plaintext message:
+CryptographyAndAESIsALotOfFun!!! (32 bytes)
+
+Step 1: Split into blocks
+
+Block 1: CryptographyAndA
+
+Block 2: ESIsALotOfFun!!!
+
+Step 2: Convert to bytes
+
+Block 1: 43 72 79 70 74 6F 67 72 61 70 68 79 41 6E 64 41
+
+Block 2: 45 53 49 73 41 4C 6F 74 4F 66 46 75 6E 21 21 21
+
+Step 3: Encrypt each block independently with AES key secretpassword!!
+
+Block 1 ciphertext: 92 FF C7 FE CD 0D 04 13 E8 B2 63 6D F4 38 BF 2A
+
+Block 2 ciphertext: FE 7C 80 45 6D 0A 87 C7 7A 20 61 78 B9 7A 19 33
+
+### Step 4: Final ciphertext
+
+```
+92 FF C7 FE CD 0D 04 13 E8 B2 63 6D F4 38 BF 2A 
+FE 7C 80 45 6D 0A 87 C7 7A 20 61 78 B9 7A 19 33
+```
+### Python Example (PyCryptodome)
+```python
+plaintext_bytes = custom_pad(plaintext).encode()
+cipher = AES.new(key.encode(), AES.MODE_ECB)
+encrypted_bytes = cipher.encrypt(plaintext_bytes)
+encrypted_message = binascii.hexlify(encrypted_bytes).decode()
+```
+
+### Key Takeaway
+ECB is easy to implement but insecure because it does not chain blocks.
+
+Patterns in plaintext remain visible in ciphertext.
+
+Secure alternatives include CBC, CTR, and GCM, which introduce chaining or randomness to hide patterns.
+
+![Cipher Modes - ECB Example](assets/ECB-block-cipher-mode.png)
+
+
+## Problems with ECB Mode
+ECB (Electronic Codebook) encrypts each block independently without chaining or diffusion.
+
+This lack of diffusion means patterns in plaintext remain visible in ciphertext.
+
+Identical plaintext blocks produce identical ciphertext blocks.
+
+On small messages, this might not be obvious, but with larger datasets the weakness becomes clear.
+
+    - Example: Plaintext Patterns
+Suppose you encrypt a dataset with repeating values (e.g., multiple identical rows in a file).
+
+In ECB, those repeating blocks will produce identical ciphertext blocks.
+
+     - The result: the ciphertext reveals structural patterns of the original data.
+
+
+## The ECB Penguin Attack
+A famous demonstration is encrypting an image of the Linux Tux penguin using ECB.
+
+Because ECB doesn’t diffuse blocks, the encrypted image still resembles the original penguin—only with scrambled colors.
+
+This shows visually how ECB leaks information even though the data is “encrypted.”
+
+### Key Takeaway
+ECB is insecure for encrypting large datasets or images because it exposes plaintext patterns.
+
+Secure alternatives like CBC, CTR, or GCM introduce chaining or randomness to hide these patterns.
+
+The ECB Penguin attack is a classic example used in cryptography courses to demonstrate why ECB should never be used in practice.
+
+```python 
+from Crypto.Cipher import AES
+import binascii
+
+# Configuración
+BLOCK_SIZE = 16
+key = b'superpassword123'  # clave de ejemplo, debe ser de 16 bytes
+
+# Leer la imagen
+with open("test.bmp", "rb") as f:
+    data = f.read()
+
+# Padding para que sea múltiplo de 16
+pad_len = BLOCK_SIZE - (len(data) % BLOCK_SIZE)
+data += bytes([pad_len]) * pad_len
+
+# Cifrado ECB
+cipher = AES.new(key, AES.MODE_ECB)
+encrypted = cipher.encrypt(data)
+
+# Guardar resultado
+with open("test_ecb.bmp", "wb") as f:
+    f.write(encrypted)
+
+print("Imagen cifrada guardada como test_ecb.bmp")
+```
+
+- Run the script
+
+This will generate a file called test_ecb.bmp.
+
+Compare results
+Open test.bmp (original).
+
+Open test_ecb.bmp (encrypted with ECB).
+
+You will notice that, although it is encrypted, the patterns in the original image are still visible.
+
+## What this demonstrates
+ECB encrypts each block independently.
+
+Identical blocks produce identical results.
+
+In images, this means that outlines and patterns are preserved.
+
+This is visual proof of why ECB is insecure.
+
+### What cipher principle does ECB not perform sufficiently, leading to it being vulnerable?
+- The principle that ECB does not perform sufficiently is diffusion.
+
+- Why diffusion matters
+In cryptography, diffusion means that small changes in the plaintext should spread out and affect many parts of the ciphertext.
+
+This ensures that patterns in the original data are hidden and the ciphertext looks random.
+
+- What happens in ECB
+ECB encrypts each block independently.
+
+Identical plaintext blocks → identical ciphertext blocks.
+
+As a result, patterns remain visible, especially in structured data like images or large datasets.
+
+- Key takeaway
+Because ECB lacks proper diffusion, it leaks structural information about the plaintext. That’s why ECB is considered insecure and is replaced in practice by modes like CBC, CTR, or GCM, which introduce chaining or randomness to achieve strong diffusion.
+
