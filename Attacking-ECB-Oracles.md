@@ -23,3 +23,53 @@ Detecting ECB: If ciphertext shows repeating blocks, it’s a sign ECB is in use
 Mitigation: Always use modern, authenticated modes such as AES‑GCM or ChaCha20‑Poly1305.
 
 - Key takeaway: Encryption is only as strong as its implementation. Using insecure modes like ECB can expose patterns and allow attackers to exploit data, even if they don’t know the key.
+
+## Cryptography Basics
+Encryption relies on two main components:
+
+Key → a secret value used to encrypt/decrypt data.
+
+Cipher algorithm → the mathematical process that transforms plaintext into ciphertext.
+
+A common confusion is between encoding and encryption:
+
+Encoding: transforms data into another format (e.g., Base64) without a key.
+
+Encryption: transforms data using both an algorithm and a key, ensuring confidentiality.
+
+### Example: ROT13
+ROT13 uses a rotation algorithm with a “key” of 13.
+
+It technically qualifies as encryption, but it’s extremely weak since anyone can reverse it easily.
+
+This highlights why relying on secret algorithms (instead of strong keys) is insecure.
+
+- Historical Context
+Before 1997, many systems relied on keeping algorithms secret.
+
+NIST organized a competition to create a mathematically secure algorithm where only the key mattered.
+
+Out of this, AES (Advanced Encryption Standard) was born, created by Vincent Rijmen and Joan Daemen.
+
+AES is now the global standard, used in countless applications.
+
+### Core Principles of Secure Encryption
+
+Confusion → obscure the relationship between plaintext and ciphertext.
+- Example: AES substitution-permutation networks make it hard to trace input-output relations.
+
+Diffusion → spread out plaintext influence across ciphertext.
+- Example: a single bit change in plaintext alters many bits in ciphertext.
+
+Key-only reliance → security depends solely on the secrecy of the key, not the algorithm.
+- Example: AES is public, but without the key, ciphertext cannot be decrypted.
+
+### Symmetric vs Asymmetric
+Symmetric encryption: same key for encryption and decryption.
+- Example: AES — fast and efficient, but requires secure key sharing.
+
+Asymmetric encryption: uses public/private key pairs.
+- Example: RSA — slower, but solves the key distribution problem.
+
+#### Key takeaway: Modern cryptography is secure only when it follows the principles of confusion, diffusion, and key-only reliance. AES embodies these principles, but insecure implementations (like ECB mode) can still break confidentiality.
+
