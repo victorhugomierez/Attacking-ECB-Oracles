@@ -65,6 +65,7 @@ Key-only reliance → security depends solely on the secrecy of the key, not the
 - Example: AES is public, but without the key, ciphertext cannot be decrypted.
 
 ### Symmetric vs Asymmetric
+
 Symmetric encryption: same key for encryption and decryption.
 - Example: AES — fast and efficient, but requires secure key sharing.
 
@@ -73,3 +74,4 @@ Asymmetric encryption: uses public/private key pairs.
 
 #### Key takeaway: Modern cryptography is secure only when it follows the principles of confusion, diffusion, and key-only reliance. AES embodies these principles, but insecure implementations (like ECB mode) can still break confidentiality.
 
+![Cryptography Basics](assets/cryptographyc-basics.png)
