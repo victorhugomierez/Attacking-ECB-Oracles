@@ -170,17 +170,17 @@ Block 1: CryptographyAndA
 Block 2: ESIsALotOfFun!!!
 
 Step 2: Convert to bytes
-
+```
 Block 1: 43 72 79 70 74 6F 67 72 61 70 68 79 41 6E 64 41
 
 Block 2: 45 53 49 73 41 4C 6F 74 4F 66 46 75 6E 21 21 21
-
+```
 Step 3: Encrypt each block independently with AES key secretpassword!!
-
+```
 Block 1 ciphertext: 92 FF C7 FE CD 0D 04 13 E8 B2 63 6D F4 38 BF 2A
 
 Block 2 ciphertext: FE 7C 80 45 6D 0A 87 C7 7A 20 61 78 B9 7A 19 33
-
+```
 ### Step 4: Final ciphertext
 
 ```
