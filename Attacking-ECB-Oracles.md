@@ -75,3 +75,20 @@ Asymmetric encryption: uses public/private key pairs.
 #### Key takeaway: Modern cryptography is secure only when it follows the principles of confusion, diffusion, and key-only reliance. AES embodies these principles, but insecure implementations (like ECB mode) can still break confidentiality.
 
 ![Cryptography Basics](assets/cryptography-basics.png)
+
+
+- AES as a Building Block
+AES is a secure encryption algorithm, but it should not be used “as is”. Instead, it serves as a building block inside larger symmetric encryption schemes. If those blocks are combined incorrectly, vulnerabilities can arise even though AES itself is mathematically sound.
+
+- Example of insecure use
+AES in ECB mode: encrypts identical plaintext blocks into identical ciphertext blocks, leaking patterns.
+
+- AES without authentication: if used only for confidentiality, attackers can manipulate ciphertext (bit flipping) without detection.
+
+- Example of secure use
+AES‑GCM: combines AES with Galois/Counter Mode, providing both confidentiality and integrity.
+
+AES‑CBC with HMAC: adds authentication to prevent tampering.
+
+- Key takeaway: AES is strong, but its security depends on how it’s implemented. Using it in insecure modes or without proper authentication can expose systems to attacks.
+
