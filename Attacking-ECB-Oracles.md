@@ -74,4 +74,4 @@ Asymmetric encryption: uses public/private key pairs.
 
 #### Key takeaway: Modern cryptography is secure only when it follows the principles of confusion, diffusion, and key-only reliance. AES embodies these principles, but insecure implementations (like ECB mode) can still break confidentiality.
 
-![Cryptography Basics](assets/cryptographyc-basics.png)
+![Cryptography Basics](assets/cryptography-basics.png)
