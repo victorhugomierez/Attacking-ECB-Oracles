@@ -409,3 +409,27 @@ Then again after a length of 21 another block was added, as shown below:
 
 ![block-size-21](assets/block-size-21.png)
 
+We can then say 21 - 5 (Second Index minus First Index), which gives us 16, indicating that the block size is 16 bytes.
+
+
+### Finding the Offset
+
+When attacking an ECB oracle, the offset is the key to gaining full control over a block. Because the application prepends and appends secret data, your chosen input rarely begins at the very start of the first block. Instead, it slips in part‑way through, which means you only partially control that block and the remainder spills into the next one.
+
+### Why the offset matters
+    - The offset tells you how many bytes of padding you must add before your input so that it aligns exactly with a block boundary.
+
+    - Once aligned, you can craft chosen plaintexts that occupy an entire block, making it possible to isolate and recover bytes of the hidden secret.
+
+### Practical approach
+
+1. Send a string of length twice the block size (e.g. 32 As if the block size is 16).
+
+2. Inspect the ciphertext blocks: initially, they will all be unique because your input is misaligned.
+
+3. Prepend one character at a time (such as B) to your string.
+
+4. When two consecutive ciphertext blocks become identical, you know your input has aligned with the block boundary.
+
+5. The number of characters you had to prepend is the offset value.
+
