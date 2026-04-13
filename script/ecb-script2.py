@@ -5,14 +5,16 @@ import requests
 # CONFIG
 # =========================
 URL = "http://Machine_ip:5000/oracle"   # Ajusta la IP de tu servidor Flask
+
 # =========================
 # ORACLE INTERFACE
 # =========================
 def chat_to_oracle(username):
-    r = requests.post(URL, data={'username': username})
-    soup = BeautifulSoup(r.text, 'html.parser')
-    value = soup.find(id='encrypted-result').find('strong').text
+    r = requests.post(URL, data={"username": username})
+    soup = BeautifulSoup(r.text, "html.parser")
+    value = soup.find(id="encrypted-result").find("strong").text
     return value
+
 # =========================
 # BLOCK SIZE DETECTION
 # =========================
@@ -26,12 +28,14 @@ def calculate_block_size():
             print("[+] Block size detected:", block_size)
             return block_size
         i += 1
+
 # =========================
 # SPLIT CIPHERTEXT
 # =========================
 def split_ciphertext(ciphertext, block_size):
     block_size *= 2  # hex encoding
     return [ciphertext[i:i+block_size] for i in range(0, len(ciphertext), block_size)]
+
 # =========================
 # OFFSET DETECTION
 # =========================
@@ -51,14 +55,14 @@ def calculate_offset(block_size):
         if len(chunks) != len(set(chunks)):
             print("[+] Offset detected:", offset)
             return offset
+
 # =========================
 # FULL SECRET EXTRACTION
 # =========================
-def extract_secret(block_size, offset):
+def extract_secret(block_size, offset, max_length=64):
     known = ""
     print("\n[+] Starting full secret extraction...\n")
-    while True:
-        # Calcular padding dinámico
+    while len(known) < max_length:
         pad_len = block_size - 1 - (len(known) % block_size)
         reference_input = "B" * offset + "A" * pad_len
         ct = chat_to_oracle(reference_input)
@@ -67,8 +71,7 @@ def extract_secret(block_size, offset):
         reference_chunk = chunks[block_index]
 
         found = False
-        # Probar todo el rango ASCII imprimible
-        for c in range(32, 127):
+        for c in range(32, 127):  # ASCII imprimible
             guess = chr(c)
             test_input = reference_input + known + guess
             test_ct = chat_to_oracle(test_input)
@@ -83,6 +86,7 @@ def extract_secret(block_size, offset):
             print("[!] No matching byte found — end of secret.")
             break
     return known
+
 # =========================
 # MAIN
 # =========================

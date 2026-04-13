@@ -912,3 +912,79 @@ The character found is added to the recovered string.
 3. Loop Until Completion
 You repeat the process until you have reconstructed the entire secret.
 The length of the secret may be known (for example, 16 bytes) or deduced by examining the ciphertext.
+
+
+![ Attack Scenario with "victorhugo"](assets/error.png)
+
+- The script remains at the single-character demonstration (extract_first_byte) and, furthermore, the brute_forcer is limited to a very small set of characters (a–z and A–Z). Consequently, when you run it, it always ends up finding ‘O’ and never progresses to reconstructing the full phrase.
+
+- Main issues
+Limited charset → if the secret contains numbers, spaces or symbols, your brute force will never test them.
+
+No extraction loop → extract_first_byte only retrieves a single character and stops.
+
+Fixed reference block → you always use chunks[1], but as you progress through the phrase, the reference block changes dynamically.
+
+- Necessary adjustments
+For your first script to return the complete secret phrase, you need to:
+
+Expand the character set to all printable ASCII characters (32–126).
+
+Implement a loop that adds the retrieved characters and recalculates the reference block.
+
+Replace the call to extract_first_byte with extract_secret.
+
+
+```python 
+def extract_secret(block_size, offset, max_length=64):
+    known = ""
+    print("\n[+] Starting full secret extraction...\n")
+    while len(known) < max_length:
+        # Calcular padding dinámico
+        pad_len = block_size - 1 - (len(known) % block_size)
+        reference_input = "B" * offset + "A" * pad_len
+        ciphertext = chat_to_oracle(reference_input)
+        chunks = split_ciphertext(ciphertext, block_size)
+
+        # Bloque de referencia según lo que ya recuperamos
+        block_index = 1 + (len(known) // block_size)
+        reference_chunk = chunks[block_index]
+
+        found = False
+        # Probar todo el rango ASCII imprimible
+        for c in range(32, 127):
+            guess = chr(c)
+            test_input = reference_input + known + guess
+            test_ct = chat_to_oracle(test_input)
+            test_chunks = split_ciphertext(test_ct, block_size)
+            if test_chunks[block_index] == reference_chunk:
+                known += guess
+                print(f"[✓] Found byte: {guess}")
+                print(f"[✓] Secret so far: {known}\n")
+                found = True
+                break
+        if not found:
+            print("[!] No matching byte found — end of secret.")
+            break
+    return known
+
+# En tu main:
+if __name__ == '__main__':
+    print("Testing the oracle")
+    ciphertext = chat_to_oracle("SuperUser")
+    print("Ciphertext for the username of SuperUser is: " + ciphertext)
+
+    print("Calculating the block size")
+    size = calculate_block_size()
+
+    print("Calculating the offset")
+    offset = calculate_offset(size)
+    print("Offset is: " + str(offset))
+
+    print("Recovering full secret...")
+    secret = extract_secret(size, offset, max_length=64)
+    print("\n==============================")
+    print("[FINAL SECRET]")
+    print(secret)
+    print("==============================")
+```

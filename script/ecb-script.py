@@ -156,6 +156,42 @@ def extract_first_byte(block_size, offset):
     char = brute_forcer(reference_chunk, initial_text, block_size, offset)
     return char
 
+def extract_secret(block_size, offset, max_length=64):
+    known = ""
+    print("\n[+] Starting full secret extraction...\n")
+    while len(known) < max_length:
+        # Calcular padding dinámico
+        pad_len = block_size - 1 - (len(known) % block_size)
+        reference_input = "B" * offset + "A" * pad_len
+        ciphertext = chat_to_oracle(reference_input)
+        chunks = split_ciphertext(ciphertext, block_size)
+
+        # Determinar bloque de referencia
+        block_index = 1 + (len(known) // block_size)
+        reference_chunk = chunks[block_index]
+
+        found = False
+        # Probar todo el rango ASCII imprimible
+        for c in range(32, 127):
+            guess = chr(c)
+            test_input = reference_input + known + guess
+            test_ct = chat_to_oracle(test_input)
+            test_chunks = split_ciphertext(test_ct, block_size)
+            if test_chunks[block_index] == reference_chunk:
+                known += guess
+                print(f"[✓] Found byte: {guess}")
+                print(f"[✓] Secret so far: {known}\n")
+                found = True
+                break
+        if not found:
+            print("[!] No matching byte found — end of secret.")
+            break
+    return known
+
+
+
+
+
 if __name__ == '__main__':
 
     #Send a message to the oracle and print the ciphertest
@@ -176,7 +212,6 @@ if __name__ == '__main__':
     #Brute force the first char
     print ("Brute forcing a single character")
     char = extract_first_byte(size, offset)
-
 
 
 
