@@ -301,3 +301,11 @@ As a result, patterns remain visible, especially in structured data like images 
 - Key takeaway
 Because ECB lacks proper diffusion, it leaks structural information about the plaintext. That’s why ECB is considered insecure and is replaced in practice by modes like CBC, CTR, or GCM, which introduce chaining or randomness to achieve strong diffusion.
 
+## chosen-plaintext attack
+
+A common offensive technique against ECB oracles is the chosen-plaintext attack. Because ECB encrypts each block independently, any user-controlled input embedded in the plaintext can be exploited. By carefully crafting input, an attacker can align target bytes within a block and then perform a byte-by-byte brute force to recover the hidden message.
+
+This approach allows the adversary to gradually reconstruct the entire plaintext without knowledge of the encryption key. The attack demonstrates how deterministic block encryption, when exposed through an oracle, can be leveraged to compromise confidentiality.
+
+In this exercise, we will first outline the theoretical basis of the attack, before moving into a hands-on demonstration that highlights its offensive application and the security implications for systems relying on ECB mode.
+
