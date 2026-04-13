@@ -309,3 +309,98 @@ This approach allows the adversary to gradually reconstruct the entire plaintext
 
 In this exercise, we will first outline the theoretical basis of the attack, before moving into a hands-on demonstration that highlights its offensive application and the security implications for systems relying on ECB mode.
 
+## Theoretical Understanding – Chosen-Plaintext Attack on ECB Oracles
+In offensive security, a common technique against ECB oracles is the chosen-plaintext attack. Because ECB encrypts each block independently, any user-controlled input embedded in the plaintext can be exploited. By carefully crafting input, an attacker can align target bytes within a block and then perform a byte-by-byte brute force to recover hidden values.
+
+### Example Scenario
+Suppose we have an ECB oracle that generates a secret token by concatenating a securely kept value with our username:
+
+```bash
+token = ECB("Victorhugo" + username + "Victorhugo")
+```
+
+If we submit the username "A", the oracle produces the following ciphertext:
+
+```bash
+Ciphertext: 92878b56ece593605c6108b7e62a08457d05ebd1dc98423dc6399c0bcd6903bb
+```
+
+- Attack Strategy
+Alignment  
+By controlling the username input, the attacker can shift the position of the secret string (Victorhugo) into a predictable block boundary.
+
+- Brute Force
+
+    The attacker submits candidate inputs one byte at a time.
+
+    Each candidate is encrypted by the oracle.
+
+    The resulting ciphertext block is compared against the target block.
+
+    A match reveals the correct byte of the secret.
+
+- Iteration  
+This process is repeated for each subsequent byte until the entire secret string is reconstructed.
+
+###  Offensive Security Implication
+This demonstrates how ECB mode, when exposed through an oracle, fails to protect confidentiality. An adversary can recover sensitive values without knowledge of the encryption key, simply by exploiting deterministic block behaviour.
+
+---
+
+### Theoretical Understanding – Determining Block Size
+Before staging an attack against an ECB oracle, the first step is to determine the block size of the cipher. This is crucial because the attack relies on aligning controlled input with block boundaries.
+
+
+### Example Approach
+1. Start Small  
+Submit a username consisting of a single character. Observe the ciphertext length.
+
+2. Increment Gradually  
+Increase the username length one character at a time. Each submission produces a new ciphertext.
+
+3. Detect Block Expansion  
+When the ciphertext suddenly grows by a full block, note the username length at which this occurred.
+
+4. Confirm Block Size  
+Continue increasing the username length until another block is added.
+The difference between these two lengths reveals the block size.
+
+### Example Scenario
+Suppose the oracle generates tokens as follows:
+
+```bash
+token = ECB("Victorhugo" + username + "Victorhugo")
+With username "A", you obtain a baseline ciphertext.
+```
+
+Increasing the username to "AAAAA" (length 5) results in the ciphertext expanding by one block:
+
+```bash
+Ciphertext: 92878b56ece593605c6108b7e62a08457d05ebd1dc98423dc6399c0bcd6903bb
+```
+By continuing this process, you can calculate the exact block size (commonly 16 bytes for AES).
+
+## Offensive Security Implication
+Determining the block size is a foundational reconnaissance step in chosen-plaintext attacks. Once the block size is known, the attacker can precisely align input to manipulate block boundaries, enabling byte-by-byte brute force recovery of hidden values.
+
+## Determining Block Size (ECB Oracle)
+
+[ Username length: 1 ] → Ciphertext length: baseline
+
+[ Username length: 2 ] → Ciphertext length: baseline
+
+[ Username length: 3 ] → Ciphertext length: baseline
+
+[ Username length: 4 ] → Ciphertext length: baseline
+
+[ Username length: 5 ] → Ciphertext length: +1 block added
+
+---
+Block size = (Length at second expansion) - (Length at first expansion)
+
+Example:
+- Username "A" → Ciphertext length = 32 bytes
+- Username "AAAAA" → Ciphertext length = 48 bytes
+→ Block size = 16 bytes (AES standard)
+
+
