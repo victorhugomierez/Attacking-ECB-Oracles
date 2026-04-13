@@ -433,3 +433,41 @@ When attacking an ECB oracle, the offset is the key to gaining full control over
 
 5. The number of characters you had to prepend is the offset value.
 
+![. As shown in our example, the secret is prepended and appended](assets/Finding-the-Offset.png)
+
+when you only have the ciphertext, you must calculate the offset yourself. The technique is straightforward:
+
+Step‑by‑step process
+Controlled input:  
+Begin with a username consisting of a known character repeated to fill exactly two blocks (e.g. 32 As if the block size is 16).
+
+Ciphertext inspection:  
+Submit this to the oracle and split the ciphertext into blocks. At this stage, all blocks will be unique because your input is misaligned with the block boundaries.
+
+Gradual prepending:  
+Add one new character (such as B) to the front of your username and resubmit.
+
+- First attempt: BAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+
+- Next attempt: BBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+
+Continue this process, each time shifting your input further forward.
+
+    - Detecting duplicates:  
+    Eventually, two consecutive ciphertext blocks will become identical. This indicates that your input has aligned perfectly with the block boundary.
+
+    - Offset value:  
+    The number of characters you had to prepend before the duplication appeared is the offset. This tells you how many bytes of the first block are occupied by the secret before your input begins.
+
+### Visual analogy
+
+Think of the blocks as boxes of fixed size. At first, your input starts halfway through a box, so you only control part of it. By padding with extra characters, you shift your input until it begins at the first slot of the next box. From that point onwards, you control the entire block and can use it to leak the secret byte by byte.
+
+(assets/step-by-step.png)
+
+![ when we only have the ciphertext, we must determine this offset ourselves](assets/stepbystep.png)
+
+We continue adding "B"s until our "A"s are now in two full and unique cipher blocks. We can then count the amount of "B"s that had to be injected at the start, which indicates our offset as shown in the image below:
+
+![ when we only have the ciphertext, we must determine this offset ourselves](assets/stepbystep2.png)
+
