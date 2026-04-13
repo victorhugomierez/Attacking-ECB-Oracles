@@ -403,4 +403,9 @@ Example:
 - Username "AAAAA" → Ciphertext length = 48 bytes
 → Block size = 16 bytes (AES standard)
 
+![block-size](assets/block-size.png)
+
+Then again after a length of 21 another block was added, as shown below:
+
+![block-size-21](assets/block-size-21.png)
 
