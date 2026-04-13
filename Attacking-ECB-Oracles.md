@@ -538,3 +538,377 @@ AAA = additional padding
 ? = secret byte being attempted to be discovered
 
 
+```python
+from Crypto.Cipher import AES
+from bs4 import BeautifulSoup
+import binascii
+import requests
+
+### Variables ###
+
+URL = "http://MACHINE_IP:5000/oracle"
+
+BLOCK_SIZE = 0
+
+### Oracle Interface ###
+
+def chat_to_oracle(username):
+    r = requests.post(URL, data = {'username' : username})
+    #Parse the response
+    soup = BeautifulSoup(r.text, 'html.parser')
+    #Find the encrypted text
+    value = str(soup.find(id='encrypted-result').find('strong'))
+    #Extract the value
+    value = value.replace('<strong>', '').replace('</strong>', '')
+
+    return value
+
+### Calculate Block Size ###
+
+def calculate_block_size():
+    #To calculate the block size, we need to keep sending a large username value until the ciphertext length grows twice
+
+    #Get the initial ciphertext length
+    username = "A"
+    original_length = len(chat_to_oracle(username))
+
+    #Now grow the username until the length becomes larger, keeping count
+    first_change_len = 1
+    while (len(chat_to_oracle(username)) == original_length):
+        username += "A"
+        first_change_len += 1
+
+    print ("First growth was at position: " + str(first_change_len))
+
+    #Get the new length
+    new_length = len(chat_to_oracle(username))
+
+    #Now grow the username a second time
+    second_change_len = first_change_len
+    while (len(chat_to_oracle(username)) == new_length):
+         username += "A"
+         second_change_len += 1
+
+    print ("Second growth was at position: " + str(second_change_len))
+
+    #With these two values, we can now determine the block size:
+    BLOCK_SIZE = second_change_len - first_change_len
+
+    print ("BLOCK_SIZE is: " + str(BLOCK_SIZE))
+
+    return BLOCK_SIZE
+
+def split_ciphertext(ciphertext, block_size):
+    #This helper function will take the ciphertext and split it into blocks of the known block size
+    #Times two since we have two hex for each char
+    block_size = block_size * 2
+    chunks = [ ciphertext[i:i+block_size] for i in range(0, len(ciphertext), block_size) ]
+    return chunks
+
+### Calculate the Offset ###
+
+def calculate_offset(block_size):
+    #To calculate the offset, we will send known text for double the block size and then gradually grow the text until we get two blocks that are the same
+
+    #Create the initial double block size buffer
+    initial_text = ""
+    for x in range(block_size * 2):
+        initial_text += "A"
+
+    #Send this buffer to get the initial ciphertext
+    ciphertext = chat_to_oracle(initial_text)
+
+    chunks = split_ciphertext(ciphertext, block_size)
+
+    #Ensure that there are no duplicates already, since this would indicate that there is no offet
+
+    if (len(chunks) != len(set(chunks))):
+        print ("No offset found!")
+        offset = 0
+        return offset
+
+    #If we got here, there is an offet. We will slowly add more text to the start of the username until we get a duplicate
+    offset = 0
+    while (len(chunks) == len(set(chunks))):
+        offset += 1
+        #Increment the text by one
+        initial_text = "B" + initial_text
+
+        ciphertext = chat_to_oracle(initial_text)
+        chunks = split_ciphertext(ciphertext, block_size)
+
+    #Once we exit the loop, it means we have a duplicate chunk and have determined the offset
+
+    print ("Offset is: " + str(offset))
+
+    return offset
+
+### Extract information from the Oracle ###
+def brute_forcer(reference_chunk, initial_text, block_size, offset):
+    #Character list can be adapted if we expect other characters as well. We could have done the full 0x00 - 0xFF range, but will stay with ASCII for this attack
+    charlist = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
+
+    actual_char = ''
+    found = False
+
+    for char in charlist:
+        print ('Testing character: ' + str(char))
+        test_text = initial_text + char
+
+        ciphertext = chat_to_oracle(test_text)
+        chunks = split_ciphertext(ciphertext, block_size)
+
+        #Test to see if our chunk matches the reference chunk
+        if (reference_chunk == chunks[1]):
+            print ("Found the char: " + char)
+            actual_char = char
+            found = True
+            break
+
+    if found:
+        return char
+    else:
+        return None
+
+def extract_first_byte(block_size, offset):
+    #Now that we have both the block_size and the offset, we are ready to stage our attack. We will showcase how to do this for a single bit. Then the process has to repeat.
+
+    #To start, we will craft our initial text.
+    initial_text = ""
+
+    #First we need to take care of the offset
+    for x in range(offset):
+        initial_text += "B"
+
+    #Now we want to populate the rest of the text up to the block size except for the last byte
+    for x in range(block_size - 1):
+        initial_text += "A"
+
+    #Now let's chat to the oracle and get our reference chunk
+    ciphertext = chat_to_oracle(initial_text)
+    chunks = split_ciphertext(ciphertext, block_size)
+
+    #Our reference chunk will be the second chunk since we have an offset
+    reference_chunk = chunks[1]
+
+    print ("Reference chunk is: " + str(reference_chunk))
+
+    #Now we can start the brute force
+    char = brute_forcer(reference_chunk, initial_text, block_size, offset)
+    return char
+
+if __name__ == '__main__':
+
+    #Send a message to the oracle and print the ciphertest
+    print ("Testing the oracle")
+    ciphertext = chat_to_oracle("SuperUser")
+    print("Ciphertext for the username of SuperUser is: " + ciphertext)
+
+    #Calculate the block size from the oracle
+    print ("Calculating the block size")
+    size = calculate_block_size()
+    print ("Block size is: " + str(size))
+
+    #Calculate the offset from the oracle
+    print ("Calculating the offset")
+    offset = calculate_offset(size)
+    print ("Offset is: " + str(offset))
+
+    #Brute force the first char
+    print ("Brute forcing a single character")
+    char = extract_first_byte(size, offset)
+    
+```
+
+## Interfacing With the Oracle
+
+```python
+def chat_to_oracle(username):
+    r = requests.post(URL, data = {'username' : username})
+    #Parse the response
+    soup = BeautifulSoup(r.text, 'html.parser')
+    #Find the encrypted text
+    value = str(soup.find(id='encrypted-result').find('strong'))
+    #Extract the value
+    value = value.replace('', '').replace('', '')
+    return value
+```
+
+### Explanation
+- Purpose:  
+This function sends a POST request to the oracle with a chosen username and retrieves the resulting ciphertext.
+
+- HTML Parsing:  
+Since the oracle returns an HTML page, the BeautifulSoup library is used to locate the <strong> tag inside the element with ID encrypted-result.
+
+- Extraction:  
+The ciphertext is extracted and cleaned from the HTML tags, returning a usable string for analysis.
+
+## Calculating the Block Size
+
+```python
+def calculate_block_size():
+    #Get the initial ciphertext length
+    username = "A"
+    original_length = len(chat_to_oracle(username))
+    #Now grow the username until the length becomes larger, keeping count
+    first_change_len = 1
+    while (len(chat_to_oracle(username)) == original_length):
+        username += "A"
+        first_change_len += 1
+    print ("First growth was at position: " + str(first_change_len))
+    #Get the new length
+    new_length = len(chat_to_oracle(username))
+    #Now grow the username a second time
+    second_change_len = first_change_len
+    while (len(chat_to_oracle(username)) == new_length):
+         username += "A"
+         second_change_len += 1
+    print ("Second growth was at position: " + str(second_change_len))
+    #With these two values, we can now determine the block size:
+    BLOCK_SIZE = second_change_len - first_change_len
+    print ("BLOCK_SIZE is: " + str(BLOCK_SIZE))
+    return BLOCK_SIZE
+```
+### Explanation
+
+- Purpose:  
+This function determines the cipher’s block size by observing how the ciphertext length changes as the input grows.
+
+- Process:
+    1. Start with a short username (e.g., "A").
+
+    2. Incrementally add "A" characters until the ciphertext length increases — this marks the first block boundary.
+
+    3. Continue adding characters until the ciphertext expands again — this marks the second boundary.
+
+    4. Subtract the two lengths to obtain the block size.
+
+- Typical Result:  
+For AES, the block size is usually 16 bytes.
+
+
+## Splitting the Ciphertext
+
+```python
+def split_ciphertext(ciphertext, block_size):
+    #This helper function will take the ciphertext and split it into blocks of the known block size
+    #Times two since we have two hex for each char
+    block_size = block_size * 2
+    chunks = [ ciphertext[i:i+block_size] for i in range(0, len(ciphertext), block_size) ]
+    return chunks
+``` 
+
+### Explanation
+- -Purpose:  
+This function takes the ciphertext and divides it into blocks of the known size. Since ciphertext is represented in hexadecimal, each byte corresponds to two hex characters, hence the multiplication by two.
+
+- Process:
+
+    - Adjust the block size to account for hex encoding.
+
+    - Use Python list comprehension to slice the ciphertext into equal‑sized chunks.
+
+    - Return the list of blocks for analysis.
+
+## Calculating the Offset
+
+```python
+def calculate_offset(block_size):
+    #To calculate the offset, we will send known text for double the block size and then gradually grow the text until we get two blocks that are the same
+    #Create the initial double block size buffer
+    initial_text = ""
+    for x in range(block_size * 2):
+        initial_text += "A"
+    #Send this buffer to get the initial ciphertext
+    ciphertext = chat_to_oracle(initial_text)
+    chunks = split_ciphertext(ciphertext, block_size)
+    #Ensure that there are no duplicates already, since this would indicate that there is no offset
+    if (len(chunks) != len(set(chunks))):
+        print ("No offset found!")
+        offset = 0
+        return offset
+    #If we got here, there is an offset. We will slowly add more text to the start of the username until we get a duplicate
+    offset = 0
+    while (len(chunks) == len(set(chunks))):
+        offset += 1
+        #Increment the text by one
+        initial_text = "B" + initial_text
+        ciphertext = chat_to_oracle(initial_text)
+        chunks = split_ciphertext(ciphertext, block_size)
+    #Once we exit the loop, it means we have a duplicate chunk and have determined the offset
+    print ("Offset is: " + str(offset))
+    return offset
+```
+
+### Explanation
+Purpose:  
+This function determines the offset — how many bytes of padding are needed before controlled input aligns perfectly with block boundaries.
+
+- Process:
+
+    1. Start with a buffer twice the block size ("A"*block_size*2).
+
+    2. Split the ciphertext into blocks.
+
+    3. If duplicate blocks already exist, there is no offset.
+
+    4. Otherwise, prepend "B" characters one at a time until two identical blocks appear.
+
+    5. The number of prepended characters is the offset.
+
+## Extracting a Byte through a Brute Force
+
+```python
+def extract_first_byte(block_size, offset):
+    #Now that we have both the block_size and the offset, we are ready to stage our attack. We will showcase how to do this for a single bit. Then the process has to repeat.
+    #To start, we will craft our initial text.
+    initial_text = ""
+    #First we need to take care of the offset
+    for x in range(offset):
+        initial_text += "B"
+    #Now we want to populate the rest of the text up to the block size except for the last byte
+    for x in range(block_size - 1):
+        initial_text += "A"
+    #Now let's chat to the oracle and get our reference chunk
+    ciphertext = chat_to_oracle(initial_text)
+    chunks = split_ciphertext(ciphertext, block_size)
+    #Our reference chunk will be the second chunk since we have an offset
+    reference_chunk = chunks[1]
+    print ("Reference chunk is: " + str(reference_chunk))
+    #Now we can start the brute force
+    char = brute_forcer(reference_chunk, initial_text, block_size, offset)
+    return char
+```
+
+### Explanation
+- Purpose:  
+This function demonstrates how to recover a single unknown byte from the oracle using chosen plaintext.
+
+- Process:
+
+    1. Prepend "B" characters to account for the offset.
+
+    2. Fill the rest of the block with "A" characters, leaving one byte slot free.
+
+    3. Query the oracle and capture the ciphertext.
+
+    4. Select the reference block (the one aligned after the offset).
+
+    5. Use a brute‑force loop (brute_forcer) to try all possible byte values.
+
+    6. When the ciphertext matches the reference chunk, the correct plaintext byte is found.
+
+## Strategy
+1. Reference Chunk Update
+Each time you retrieve a new character, you add it to your payload.
+The reference chunk must be recalculated so that the last unknown byte is in the correct position.
+
+2. Iterative Brute Force
+You use the same method as for the first byte.
+You try all options (0–255) until the chunk matches the reference chunk.
+The character found is added to the recovered string.
+
+3. Loop Until Completion
+You repeat the process until you have reconstructed the entire secret.
+The length of the secret may be known (for example, 16 bytes) or deduced by examining the ciphertext.
