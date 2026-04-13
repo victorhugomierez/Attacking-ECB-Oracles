@@ -471,3 +471,70 @@ We continue adding "B"s until our "A"s are now in two full and unique cipher blo
 
 ![ when we only have the ciphertext, we must determine this offset ourselves](assets/stepbystep2.png)
 
+### Attacking the Oracle
+
+With the block size and offset determined, we are now ready to attack the oracle. Given our example, we know the following:
+
+- The block size is 16 bytes
+- Our offset is 4 bytes
+
+### Attack Scenario with "victorhugo"
+First block (misaligned input):
+
+White Xs → unknown secret bytes.
+
+Red Bs → padding added to shift alignment.
+
+This shows how your input begins part‑way through the first block.
+
+Second block (controlled filler):
+
+Green As → chosen plaintext filling the block.
+
+This ensures you have a predictable pattern to detect duplicates and confirm alignment.
+
+Third block (injection with "victorhugo"):
+
+"victorhugo" characters replace the green As.
+
+The last slot of this block is reserved for the unknown secret byte (?).
+
+This is the block you brute‑force against the oracle to reveal the first secret character.
+
+Visual Layout (ASCII representation)
+Código
+Block 1: [XXXX XXXX BBBB]   -> Secret + offset padding
+Block 2: [AAAAAAAAAAAAAAAA] -> Controlled filler
+Block 3: [victorhugoAAA?]   -> Injection + unknown byte
+XXXX = secret bytes you don’t control.
+
+BBBB = offset padding (4 bytes).
+
+AAAAAAAAAAAAAAAA = alignment filler.
+
+victorhugoAAA? = your chosen plaintext plus the unknown byte to crack.
+
+![ Attack Scenario with "victorhugo"](assets/attack.png)
+
+- Block 1 (Misaligned input)  
+[XXXX XXXX BBBB] → Secret + padding
+
+XXXX = secret bytes that you do not control
+
+BBBB = 4-byte padding for alignment
+
+- Block 2 (Controlled padding)  
+[AAAAAAAAAAAAAAAA] → Controlled padding
+
+AAAAAAAAAAAAAAAA = text chosen to confirm alignment
+
+- Block 3 (Injection with ‘victorhugo’)  
+[victorhugoAAA?] → Injection + unknown byte
+
+‘victorhugo’ = your controlled input
+
+AAA = additional padding
+
+? = secret byte being attempted to be discovered
+
+
