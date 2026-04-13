@@ -998,3 +998,156 @@ if __name__ == '__main__':
   Your browser does not support the video tag.
 </video>
 
+## The Attack Mechanism
+
+1. Interface with the Oracle
+Your Flask server acts as an oracle: it receives text controlled by you (the “username”) and returns the ciphertext of the secret concatenated with that text.
+
+This allows you to send chosen inputs and observe how the encrypted output changes.
+
+2. Block Size Detection
+The script sends increasingly longer strings of “A”.
+
+As long as the ciphertext doesn't change length, it remains within the same block.
+
+When the length increases, it means a new block has been added.
+
+The difference between these lengths reveals the AES block size (typically 16 bytes).
+
+3. Offset Detection
+The secret doesn't start right at the beginning of the block, but rather offset.
+
+The script sends strings of “A” and then adds “B” to the beginning.
+
+When two identical blocks appear in the ciphertext, it means you've successfully aligned the secret with the block boundaries.
+
+This offset is the offset.
+
+4. Building the Reference Block
+Once you know the block size and offset, you can prepare an input that leaves a single byte of the secret "exposed" at the end of a block.
+
+The script is padded with "A" and "B" until the last byte of the block is the one you want to guess.
+
+The resulting ciphertext is saved as the reference block.
+
+5. Character-by-Character Brute Force
+
+The script tries all possible characters (chr(32) to chr(126) in printable ASCII).
+
+For each character, create an input with the known candidate text plus the candidate.
+
+If the ciphertext block matches the reference block, it means that the candidate is the correct byte of the secret.
+
+It is added to the result, and the process is repeated for the next byte.
+
+6. Iterate until the phrase is complete.
+
+The loop repeats, each time with a new reference block and a more known character.
+
+This is how the secret is reconstructed byte by byte.
+
+The process ends when no more matches are found (end of secret) or when the defined maximum limit (max_length) is reached.
+
+![Obtaining the hidden secret](assets/test1.png)
+
+### What you have just seen in your output is the result of a classic attack against AES in ECB mode
+
+- Step-by-step account of the attack
+
+1. The ECB oracle  
+My Flask server encrypted a combination of:
+```
+username (entrada controlada por ti) + secreto (texto oculto)
+```
+and returned the ciphertext. As ECB encrypts each block independently and deterministically, you could manipulate the input to align bytes of the secret at predictable positions.
+
+2. Determining the block size  
+    - The script sent strings of ‘A’ of increasing length.
+
+    - As long as the ciphertext remained the same length, you were within the same block.
+
+    - When it increased, you knew a new block had been added.
+
+    - The difference revealed the block size (16 bytes in AES).
+
+3. Calculating the offset  
+    - The secret did not start exactly at the beginning of a block.
+
+    - The script kept adding ‘B’s’ to the start until two encrypted blocks were identical.
+
+    - That offset told you how many padding bytes you needed to align the secret with the block boundaries.
+
+4. Construction of the reference block  
+Using the offset and block size, the script generated an input that left a single unknown byte of the secret at the end of a block.
+
+    - The ciphertext of that block was saved as a reference.
+
+5. Character-by-character brute force
+
+    - The script tested all printable ASCII characters.
+
+    - For each candidate, it constructed an input consisting of the known text plus the candidate.
+
+    - If the ciphertext block matched the plaintext block, that candidate was the correct byte.
+
+    - It was added to the recovered secret and the process was repeated for the next byte.
+
+6. Iterate until the sentence is complete  
+The loop continued, recalculating the reference block each time, until the complete sentence was reconstructed.
+You can see how it took shape in your output:
+```
+[✓] Found byte: O
+[✓] Secret so far: OracleKnows...
+```
+
+## Conclusion
+The attack works because ECB does not hide patterns: each identical input block produces an identical output block.
+
+By having an oracle that accepts controlled input and returns ciphertext, you were able to exploit that property to uncover the secret byte by byte.
+
+For this reason, in real-world security, ECB should never be used. Modern modes such as AES-GCM or AES-CCM prevent this type of attack.
+
+
+Your controlled input (username) + Hidden secret
+┌───────────────┐┌───────────────┐┌───────────────┐
+│   Block 1     ││   Block 2     ││   Block 3     │ ...
+└───────────────┘└───────────────┘└───────────────┘
+        ↓                 ↓                 ↓
+   ECB Encryption     ECB Encryption     ECB Encryption
+        ↓                 ↓                 ↓
+┌───────────────┐┌───────────────┐┌───────────────┐
+│ Ciphertext 1  ││ Ciphertext 2  ││ Ciphertext 3  │ ...
+└───────────────┘└───────────────┘└───────────────┘
+
+## Attack Stages
+
+1. Alignment with Padding
+
+- You send "A"*N and prepend "B"*offset until the secret aligns exactly at the end of a block.
+
+- This isolates one unknown byte of the secret in a predictable position.
+
+2. Reference Block
+
+- You take the ciphertext block that contains the unknown byte.
+
+- This block becomes your “reference fingerprint.”
+
+3. Brute Force Guessing
+
+- You try all possible characters (printable ASCII or full byte range).
+
+- For each candidate, you build an input with known + candidate.
+
+- If the resulting ciphertext block matches the reference block, the candidate is correct.
+
+- We have added it to the recovered secret.
+
+4. Iteration
+
+- Repeat the process: update known, recalculate the reference block, brute force the next byte.
+
+- Continue until the entire secret is reconstructed.
+
+# Core Idea
+    - The attack works because ECB encrypts each block independently and deterministically. By controlling the input, you can align the hidden secret into predictable positions and then discover it byte by byte by comparing ciphertext blocks.
