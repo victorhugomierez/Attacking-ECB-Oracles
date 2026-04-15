@@ -56,6 +56,6 @@ python script/ecb-script2.py
 
 [![Demo Screenshot](assets/error.png)](assets/test.mp4)
 
-- `assets/error.png` → imagen previa que se mostrará en el README.  
-- `assets/test.mp4` → el vídeo que se abrirá al hacer clic.
+- `assets/error.png`
+- `assets/test.mp4`
 
